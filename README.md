@@ -36,20 +36,40 @@ Why developers love it:
    ```bash
    npm install && npm run dev
    ```
-3. Get your API token from [manage.mysites.guru/en/sites/screenshots](https://manage.mysites.guru/en/sites/screenshots) (enable "Public Site Screenshots" first)
-4. Paste the token when prompted on first launch
+   For Raycast Beta, run `npm install && npm run dev:beta` instead.
+3. Open the command in Raycast
+4. Enter the client ID in the extension preferences
+5. Sign in to MySites.guru and approve the requested access
+
+Register the OAuth client with this redirect URI:
+
+```text
+https://raycast.com/redirect?packageName=mysites-guru
+```
+
+The extension uses OAuth2 Authorization Code with PKCE and does not require a
+client secret.
 
 ## Features
 
 - Search all your connected sites by name
-- Open the mySites.guru management page for any site
+- View platform, version, connection, SSL, and update information
+- Review audit, backup, snapshot, and extension history
+- Queue audits, backups, snapshots, and extension updates
+- Configure the Enter and Command-Enter site actions
+- Copy backup archive filenames with Command-Enter
 - Visit the site directly in your browser
-- Copy site or management URLs to clipboard
+- Copy site URLs to the clipboard
 - Real favicons for each site
-- Results cached for 5 minutes (refresh with ⌘R)
+- Secure OAuth2 authentication with PKCE and rotating refresh tokens
+- Cached results with manual refresh using ⌘R
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| mySites.guru Site Search | Search your sites and open management pages |
+| MySites.guru Site Search | Search, inspect, and manage sites |
+| MySites: Run Site Audit | Search for a site and queue an audit |
+| MySites: Create Site Backup | Search for a site and queue a backup |
+| MySites: Take Site Snapshot | Search for a site and queue a snapshot |
+| MySites: Sign out | Remove the stored OAuth session |
