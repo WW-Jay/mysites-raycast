@@ -1,17 +1,20 @@
 {
   "$schema": "https://www.raycast.com/schemas/extension.json",
   "name": "mysites-guru",
-  "title": "mySites.guru",
+  "title": "MySites.guru",
   "description": "Search and manage your mySites.guru connected sites",
   "icon": "icon.png",
   "author": "PhilETaylor",
   "license": "MIT",
-  "categories": ["Productivity", "Developer Tools"],
+  "categories": [
+    "Productivity",
+    "Developer Tools"
+  ],
   "commands": [
     {
       "name": "search-sites",
-      "title": "mySites.guru Site Search",
-      "description": "Search your mySites.guru sites and open the management page",
+      "title": "Site Search",
+      "description": "Search, inspect, and manage your mySites.guru sites",
       "mode": "view",
       "keywords": [
         "my",
@@ -20,19 +23,134 @@
         "site",
         "manage"
       ]
+    },
+    {
+      "name": "run-audit",
+      "title": "Run Site Audit",
+      "description": "Find a site and queue a security audit",
+      "mode": "view",
+      "keywords": [
+        "mysites",
+        "security",
+        "scan"
+      ]
+    },
+    {
+      "name": "create-backup",
+      "title": "Create Site Backup",
+      "description": "Find a site and queue a backup",
+      "mode": "view",
+      "keywords": [
+        "mysites",
+        "archive"
+      ]
+    },
+    {
+      "name": "take-snapshot",
+      "title": "Take Site Snapshot",
+      "description": "Find a site and queue a file snapshot",
+      "mode": "view",
+      "keywords": [
+        "mysites",
+        "files",
+        "integrity"
+      ]
+    },
+    {
+      "name": "sign-out",
+      "title": "Sign Out",
+      "description": "Remove the stored MySites.guru OAuth session",
+      "mode": "no-view",
+      "keywords": ["mysites", "logout", "oauth"]
     }
   ],
   "preferences": [
     {
-      "name": "token",
-      "title": "API Token",
-      "description": "Your mySites.guru token from https://manage.mysites.guru/en/sites/screenshots",
-      "type": "password",
-      "required": true
+      "name": "clientId",
+      "title": "OAuth Client ID",
+      "description": "Client ID from your MySites.guru API client registration",
+      "type": "textfield",
+      "required": true,
+      "placeholder": "Enter your MySites.guru client ID"
+    },
+    {
+      "name": "listSiteAction",
+      "title": "List: CMD+Enter Action",
+      "description": "Action when pressing Command+Enter on a site in the search list (Enter always opens the detail view)",
+      "type": "dropdown",
+      "required": true,
+      "default": "manage",
+      "data": [
+        {
+          "title": "Open MySites Page",
+          "value": "manage"
+        },
+        {
+          "title": "Open Site Root",
+          "value": "site"
+        },
+        {
+          "title": "Open Admin Login",
+          "value": "admin"
+        }
+      ]
+    },
+    {
+      "name": "primarySiteAction",
+      "title": "Detail: Enter Action",
+      "description": "Action when pressing Enter in the site detail view",
+      "type": "dropdown",
+      "required": true,
+      "default": "manage",
+      "data": [
+        {
+          "title": "Open MySites Page",
+          "value": "manage"
+        },
+        {
+          "title": "Open Site Root",
+          "value": "site"
+        },
+        {
+          "title": "Open Admin Login",
+          "value": "admin"
+        }
+      ]
+    },
+    {
+      "name": "secondarySiteAction",
+      "title": "Detail: CMD+Enter Action",
+      "description": "Action when pressing Command+Enter in the site detail view",
+      "type": "dropdown",
+      "required": true,
+      "default": "site",
+      "data": [
+        {
+          "title": "Open MySites Page",
+          "value": "manage"
+        },
+        {
+          "title": "Open Site Root",
+          "value": "site"
+        },
+        {
+          "title": "Open Admin Login",
+          "value": "admin"
+        }
+      ]
+    },
+    {
+      "name": "confirmSiteActions",
+      "title": "Confirm Actions",
+      "label": "Ask for confirmation before queuing audits, backups, and snapshots",
+      "description": "Show a confirmation prompt before queuing audits, backups, or snapshots",
+      "type": "checkbox",
+      "required": false,
+      "default": false
     }
   ],
   "dependencies": {
-    "@raycast/api": "^1.93.3",
+    "@raycast/api": "^1.104.19",
     "@raycast/utils": "^1.19.1"
   },
   "devDependencies": {
@@ -46,6 +164,7 @@
   "scripts": {
     "build": "ray build",
     "dev": "ray develop",
+    "dev:beta": "ray develop --target x",
     "fix-lint": "ray lint --fix",
     "lint": "ray lint",
     "prepublishOnly": "echo \"Error: no publish\" && exit 1",
