@@ -1,17 +1,14 @@
-# mySites.guru for Raycast
+# MySites.guru for Raycast
 
-Search and jump to any of your [mySites.guru](https://mysites.guru) managed sites directly from Raycast.
+Search, inspect, and manage your [MySites.guru](https://mysites.guru) connected sites directly from Raycast.
 
-Read more about how and why we built this in our [blog post](https://mysites.guru/blog/mysites-guru-raycast-extension-for-mac/).
+Read more about the MySites.guru API in the [blog post](https://mysites.guru/blog/mysites-guru-api/).
 
 ## Screenshots
 
-<img width="1872" height="1320" alt="CleanShot 2026-02-27 at 20 51 22@2x" src="https://github.com/user-attachments/assets/abbc014b-2299-4454-9657-14dfb71206b2" />
+![Search](images/search.png)
 
 ![Setup](images/setup.png)
-
-<img width="1872" height="1320" alt="CleanShot 2026-02-27 at 20 52 31@2x" src="https://github.com/user-attachments/assets/d256b046-5849-49fb-a1cd-c061776ba824" />
-
 
 ## What is Raycast?
 
@@ -29,47 +26,43 @@ Why developers love it:
 
 ## Install
 
-<a href="https://github.com/mySites-guru/raycast-extension/releases/latest"><img src="https://img.shields.io/badge/Install_for_Raycast-black?style=for-the-badge&logo=raycast&logoColor=FF6363" alt="Install for Raycast" /></a>
-
-1. Download the [latest release](https://github.com/mySites-guru/raycast-extension/releases/latest)
-2. Clone or extract, then run:
+1. Clone or download the repository
+2. Install dependencies and start development:
    ```bash
    npm install && npm run dev
    ```
    For Raycast Beta, run `npm install && npm run dev:beta` instead.
 3. Open the command in Raycast
-4. Enter the client ID in the extension preferences
+4. Enter your OAuth client ID in the extension preferences
 5. Sign in to MySites.guru and approve the requested access
 
-Register the OAuth client with this redirect URI:
+Register your OAuth client at **Account → API Clients** in the MySites.guru dashboard with this redirect URI:
 
 ```text
-https://raycast.com/redirect?packageName=mysites-guru
+https://raycast.com/redirect?packageName=Extension
 ```
 
-The extension uses OAuth2 Authorization Code with PKCE and does not require a
-client secret.
+The extension uses OAuth2 Authorization Code with PKCE and does not require a client secret.
 
 ## Features
 
 - Search all your connected sites by name
+- Filter sites by tag
 - View platform, version, connection, SSL, and update information
 - Review audit, backup, snapshot, and extension history
 - Queue audits, backups, snapshots, and extension updates
-- Configure the Enter and Command-Enter site actions
-- Copy backup archive filenames with Command-Enter
-- Visit the site directly in your browser
-- Copy site URLs to the clipboard
+- Configurable Enter and Command-Enter site actions
+- Copy site and management URLs to the clipboard
 - Real favicons for each site
 - Secure OAuth2 authentication with PKCE and rotating refresh tokens
-- Cached results with manual refresh using ⌘R
+- 5-minute response cache with manual refresh using ⌘R
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| MySites.guru Site Search | Search, inspect, and manage sites |
-| MySites: Run Site Audit | Search for a site and queue an audit |
-| MySites: Create Site Backup | Search for a site and queue a backup |
-| MySites: Take Site Snapshot | Search for a site and queue a snapshot |
-| MySites: Sign out | Remove the stored OAuth session |
+| Site Search | Search, inspect, and manage your sites |
+| Run Site Audit | Find a site and queue a security audit |
+| Create Site Backup | Find a site and queue a backup |
+| Take Site Snapshot | Find a site and queue a file snapshot |
+| Sign Out | Remove the stored OAuth session |
