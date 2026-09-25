@@ -11,6 +11,11 @@ import {
   Site,
   SiteDetail,
   SitesPage,
+  SitesSummary,
+  SitesSummaryCounts,
+  SitesSummaryOptions,
+  SiteSnapshotFlags,
+  SiteSummary,
   SiteTag,
   Snapshot,
 } from "./types";
@@ -127,6 +132,92 @@ function parseSiteDetail(value: unknown): SiteDetail {
     sslIssuer: optionalString(value.ssl_issuer),
     updatesAvailable: optionalNumber(value.updates_available),
     coreUpdateAvailable: optionalBoolean(value.core_update_available),
+  };
+}
+
+function parseSnapshotFlags(value: unknown): SiteSnapshotFlags | undefined {
+  if (!isRecord(value)) return undefined;
+  return {
+    id: optionalString(value.id),
+    debugEnabled: optionalBoolean(value.debug_enabled),
+    cacheEnabled: optionalBoolean(value.cache_enabled),
+    userRegistrationEnabled: optionalBoolean(value.user_registration_enabled),
+    offlineMode: optionalBoolean(value.offline_mode),
+    superAdminCount: optionalNumber(value.super_admin_count),
+    non2faAdmins: optionalNumber(value.non_2fa_admins),
+    maliciousCronJobs: optionalNumber(value.malicious_cron_jobs),
+  };
+}
+
+function parseSiteSummary(value: unknown): SiteSummary {
+  if (!isRecord(value)) {
+    throw new MySitesApiError("mySites.guru returned an invalid site summary");
+  }
+
+  const lastBackupCompleted = optionalString(value.last_backup_completed);
+
+  return {
+    ...parseSite(value),
+    lastBackup: optionalString(value.last_backup) ?? lastBackupCompleted,
+    connectorVersion: optionalString(value.connector_version),
+    isPaused: optionalBoolean(value.is_paused),
+    isHacked: optionalBoolean(value.is_hacked),
+    lastSnapshot: optionalString(value.last_snapshot),
+    snapshotAgeDays: optionalNumber(value.snapshot_age_days),
+    lastAuditId: optionalString(value.last_audit_id),
+    auditUnread: optionalBoolean(value.audit_unread),
+    lastBackupStarted: optionalString(value.last_backup_started),
+    lastBackupCompleted,
+    updatesAvailable: optionalNumber(value.updates_available),
+    coreUpdateAvailable: optionalBoolean(value.core_update_available),
+    vulnerableExtensions: optionalNumber(value.vulnerable_extensions),
+    coreVulnerabilityCount: optionalNumber(value.core_vulnerability_count),
+    sslExpiration: optionalString(value.ssl_expiration),
+    sslDaysRemaining: optionalNumber(value.ssl_days_remaining),
+    needsAttention: optionalBoolean(value.needs_attention),
+    attentionReasons: Array.isArray(value.attention_reasons)
+      ? value.attention_reasons.filter(
+          (reason): reason is string => typeof reason === "string",
+        )
+      : [],
+    snapshot: parseSnapshotFlags(value.snapshot),
+  };
+}
+
+function parseSummaryCounts(value: unknown): SitesSummaryCounts {
+  if (!isRecord(value)) return {};
+  return {
+    hacked: optionalNumber(value.hacked),
+    updatesAvailable: optionalNumber(value.updates_available),
+    coreUpdateAvailable: optionalNumber(value.core_update_available),
+    vulnerableExtensions: optionalNumber(value.vulnerable_extensions),
+    coreVulnerabilities: optionalNumber(value.core_vulnerabilities),
+    disconnected: optionalNumber(value.disconnected),
+    staleSnapshot: optionalNumber(value.stale_snapshot),
+    paused: optionalNumber(value.paused),
+    needsAttention: optionalNumber(value.needs_attention),
+  };
+}
+
+function parseSitesSummary(value: unknown): SitesSummary {
+  if (!isRecord(value) || !Array.isArray(value.data)) {
+    throw new MySitesApiError(
+      "mySites.guru returned an invalid sites summary response",
+    );
+  }
+
+  const meta = isRecord(value.meta) ? value.meta : {};
+
+  return {
+    sites: value.data.map(parseSiteSummary),
+    meta: {
+      total: optionalNumber(meta.total),
+      scopeTotal: optionalNumber(meta.scope_total),
+      generatedAt: optionalString(meta.generated_at),
+      staleSnapshotDays: optionalNumber(meta.stale_snapshot_days),
+      counts: parseSummaryCounts(meta.counts),
+      summary: optionalString(meta.summary),
+    },
   };
 }
 
@@ -334,6 +425,36 @@ export function listSites(accessToken: string): Promise<Site[]> {
     }
 
     return sites.sort((left, right) => left.name.localeCompare(right.name));
+  });
+}
+
+export function getSitesSummary(
+  accessToken: string,
+  options: SitesSummaryOptions = {},
+): Promise<SitesSummary> {
+  const params = new URLSearchParams();
+  if (options.needsAttention !== undefined) {
+    params.set("needs_attention", String(options.needsAttention));
+  }
+  if (options.platform) params.set("platform", options.platform);
+  if (options.tag) params.set("tag", options.tag);
+  if (options.hashIds && options.hashIds.length > 0) {
+    params.set("hash_ids", options.hashIds.join(","));
+  }
+  if (options.includePaused !== undefined) {
+    params.set("include_paused", String(options.includePaused));
+  }
+  if (options.sort) params.set("sort", options.sort);
+
+  const query = params.toString();
+  const path = query ? `/sites/summary?${query}` : "/sites/summary";
+
+  return withCache(`summary:${query}`, async () => {
+    const summary = parseSitesSummary(await apiRequest(path, accessToken));
+    if (!options.sort) {
+      summary.sites.sort((left, right) => left.name.localeCompare(right.name));
+    }
+    return summary;
   });
 }
 

@@ -19,11 +19,11 @@ import {
   getAudit,
   getProfile,
   getSite,
+  getSitesSummary,
   invalidateCache,
   listAudits,
   listBackups,
   listExtensions,
-  listSites,
   listSnapshots,
   listTags,
   triggerAudit,
@@ -32,7 +32,16 @@ import {
   updateExtensions,
 } from "./api/client";
 import { errorMessage } from "./api/errors";
-import { Extension, Site } from "./api/types";
+import { Extension, Site, SiteSummary } from "./api/types";
+import {
+  formatAttentionReasons,
+  matchesFilter,
+  siteAccessories,
+  siteKeywords,
+  sortSites,
+  SiteSort,
+  SORT_OPTIONS,
+} from "./site-health";
 import {
   DEFAULT_LIST_SITE_ACTION,
   DEFAULT_PRIMARY_SITE_ACTION,
@@ -88,26 +97,6 @@ function markdownTable(
         `| **${markdownValue(label)}** | ${markdownValue(value)} |`,
     ),
   ].join("\n");
-}
-
-function siteAccessories(site: Site): List.Item.Accessory[] {
-  const accessories: List.Item.Accessory[] = [];
-
-  if (site.platform) {
-    accessories.push({
-      text: site.version ? `${site.platform} ${site.version}` : site.platform,
-    });
-  }
-
-  accessories.push({
-    icon: {
-      source: site.isConnected ? Icon.CheckCircle : Icon.ExclamationMark,
-      tintColor: site.isConnected ? Color.Green : Color.Red,
-    },
-    tooltip: site.isConnected ? "Connected" : "Disconnected",
-  });
-
-  return accessories;
 }
 
 function statusIcon(status?: string): List.Item.Accessory["icon"] {
@@ -173,11 +162,17 @@ function SiteActions({
   token,
   onRefresh,
   context = "list",
+  sort,
+  onSortChange,
+  summaryText,
 }: {
   site: Site;
   token: string;
   onRefresh?: () => void;
   context?: "list" | "detail";
+  sort?: SiteSort;
+  onSortChange?: (sort: SiteSort) => void;
+  summaryText?: string;
 }) {
   const preferences = getPreferenceValues<SiteActionPreferences>();
   const listAction = isSiteOpenAction(preferences.listSiteAction)
@@ -239,6 +234,24 @@ function SiteActions({
           shortcut={{ modifiers: ["cmd"], key: "." }}
         />
       </ActionPanel.Section>
+      {context === "list" && onSortChange ? (
+        <ActionPanel.Section title="View">
+          <ActionPanel.Submenu
+            title="Sort By"
+            icon={Icon.BarChart}
+            shortcut={{ modifiers: ["cmd", "shift"], key: "s" }}
+          >
+            {SORT_OPTIONS.map((option) => (
+              <Action
+                key={option.value}
+                title={option.label}
+                icon={sort === option.value ? Icon.Check : Icon.Circle}
+                onAction={() => onSortChange(option.value)}
+              />
+            ))}
+          </ActionPanel.Submenu>
+        </ActionPanel.Section>
+      ) : null}
       <ActionPanel.Section title="Actions">
         <Action
           title="Queue Audit"
@@ -304,7 +317,7 @@ function SiteActions({
         />
         <Action.Push
           title="Show Extensions"
-          icon={Icon.PuzzlePiece}
+          icon={Icon.Plug}
           target={<ExtensionsView site={site} token={token} />}
         />
       </ActionPanel.Section>
@@ -319,6 +332,13 @@ function SiteActions({
           content={siteManagementUrl(site)}
           shortcut={{ modifiers: ["cmd", "shift"], key: "c" }}
         />
+        {summaryText ? (
+          <Action.CopyToClipboard
+            title="Copy Portfolio Summary"
+            icon={Icon.Clipboard}
+            content={summaryText}
+          />
+        ) : null}
         {onRefresh ? (
           <Action
             title="Refresh"
@@ -341,11 +361,16 @@ function SiteDetailView({ site, token }: { site: Site; token: string }) {
     },
   );
   const detail = data ?? site;
+  const summary: SiteSummary | undefined =
+    "attentionReasons" in site ? (site as SiteSummary) : undefined;
   const tags = detail.tags.map((tag) => tag.name).join(", ") || undefined;
   const status = detail.isConnected ? "Connected" : "Disconnected";
   const markdown = [
     `# ${detail.name}`,
     `\`${detail.url}\``,
+    summary?.needsAttention && summary.attentionReasons.length > 0
+      ? `> ⚠️ **Needs attention:** ${formatAttentionReasons(summary.attentionReasons)}`
+      : "",
     "## Site",
     markdownTable([
       ["Connection", status],
@@ -384,9 +409,40 @@ function SiteDetailView({ site, token }: { site: Site; token: string }) {
         "SSL Expiration",
         "sslExpiration" in detail
           ? formatDate(detail.sslExpiration)
+          : formatDate(summary?.sslExpiration),
+      ],
+      [
+        "SSL Days Remaining",
+        summary?.sslDaysRemaining !== undefined
+          ? summary.sslDaysRemaining
           : undefined,
       ],
       ["SSL Issuer", "sslIssuer" in detail ? detail.sslIssuer : undefined],
+      [
+        "Vulnerable Extensions",
+        summary?.vulnerableExtensions !== undefined
+          ? summary.vulnerableExtensions
+          : undefined,
+      ],
+      [
+        "Core Vulnerabilities",
+        summary?.coreVulnerabilityCount !== undefined
+          ? summary.coreVulnerabilityCount
+          : undefined,
+      ],
+      ["Compromise Detected", summary?.isHacked ? "Yes" : undefined],
+      [
+        "Admins Without 2FA",
+        summary?.snapshot?.non2faAdmins !== undefined
+          ? summary.snapshot.non2faAdmins
+          : undefined,
+      ],
+      [
+        "Malicious Cron Jobs",
+        summary?.snapshot?.maliciousCronJobs !== undefined
+          ? summary.snapshot.maliciousCronJobs
+          : undefined,
+      ],
     ]),
     error ? `> ${errorMessage(error)}` : "",
   ]
@@ -413,34 +469,68 @@ function AccountView({ token }: { token: string }) {
       failureToastOptions: { title: "Failed to Fetch Account" },
     },
   );
+  const { data: summary, revalidate: revalidateSummary } = useCachedPromise(
+    getSitesSummary,
+    [token],
+  );
+
+  const counts = summary?.meta.counts;
+  const markdown = data
+    ? [
+        `# ${data.company ?? data.name ?? "MySites.guru"}`,
+        markdownTable([
+          ["Name", data.name],
+          ["Company", data.company],
+          ["Email", data.email],
+          ["User ID", data.uuid],
+        ]),
+        summary?.meta.summary ? `> ${summary.meta.summary}` : "",
+        counts
+          ? "## Portfolio"
+          : "",
+        counts
+          ? markdownTable([
+              ["Total Sites", summary?.meta.total],
+              ["Needs Attention", counts.needsAttention],
+              ["Disconnected", counts.disconnected],
+              ["Updates Available", counts.updatesAvailable],
+              ["Core Updates", counts.coreUpdateAvailable],
+              ["Vulnerable Extensions", counts.vulnerableExtensions],
+              ["Core Vulnerabilities", counts.coreVulnerabilities],
+              ["Hacked", counts.hacked],
+              ["Stale Snapshots", counts.staleSnapshot],
+              ["Paused", counts.paused],
+            ])
+          : "",
+        error ? `> ${errorMessage(error)}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n\n")
+    : undefined;
 
   return (
     <Detail
       isLoading={isLoading}
       navigationTitle="MySites.guru Account"
-      markdown={
-        data
-          ? [
-              `# ${data.company ?? data.name ?? "MySites.guru"}`,
-              markdownTable([
-                ["Name", data.name],
-                ["Company", data.company],
-                ["Email", data.email],
-                ["User ID", data.uuid],
-              ]),
-              error ? `> ${errorMessage(error)}` : "",
-            ]
-              .filter(Boolean)
-              .join("\n\n")
-          : undefined
-      }
+      markdown={markdown}
       actions={
         <ActionPanel>
+          {summary?.meta.summary ? (
+            <Action.CopyToClipboard
+              title="Copy Portfolio Summary"
+              icon={Icon.Clipboard}
+              content={summary.meta.summary}
+            />
+          ) : null}
           <Action
             title="Refresh"
             icon={Icon.ArrowClockwise}
             shortcut={{ modifiers: ["cmd"], key: "r" }}
-            onAction={() => { invalidateCache(); revalidate(); }}
+            onAction={() => {
+              invalidateCache();
+              revalidate();
+              revalidateSummary();
+            }}
           />
         </ActionPanel>
       }
@@ -736,36 +826,82 @@ function ExtensionsView({ site, token }: { site: Site; token: string }) {
 
 function SearchSitesCommand() {
   const token = useAccessToken();
-  const [selectedTag, setSelectedTag] = useState<string>("");
+  const [filter, setFilter] = useState<string>("");
+  const [sort, setSort] = useState<SiteSort>("name");
 
   const {
-    data: sites,
+    data: summary,
     isLoading,
     error,
     revalidate,
-  } = useCachedPromise(listSites, [token], {
+  } = useCachedPromise(getSitesSummary, [token], {
     failureToastOptions: { title: "Failed to Fetch Sites" },
   });
 
   const { data: tags } = useCachedPromise(listTags, [token]);
 
-  const filteredSites = selectedTag
-    ? sites?.filter((site) => site.tags.some((t) => t.slug === selectedTag))
-    : sites;
+  const sites = summary?.sites;
+  const attentionCount = summary?.meta.counts.needsAttention;
+  const summaryText = summary?.meta.summary;
+  const platforms = Array.from(
+    new Set(
+      (sites ?? [])
+        .map((site) => site.platform)
+        .filter((platform): platform is string => Boolean(platform)),
+    ),
+  ).sort();
+  const visibleSites = sites
+    ? sortSites(
+        sites.filter((site) => matchesFilter(site, filter)),
+        sort,
+      )
+    : undefined;
 
   return (
     <List
       isLoading={isLoading}
       searchBarPlaceholder="Search your mySites.guru sites..."
       searchBarAccessory={
-        tags && tags.length > 0 ? (
-          <List.Dropdown tooltip="Filter by Tag" onChange={setSelectedTag}>
-            <List.Dropdown.Item title="All Sites" value="" />
-            {tags.map((tag) => (
-              <List.Dropdown.Item key={tag.slug} title={tag.name} value={tag.slug} />
-            ))}
-          </List.Dropdown>
-        ) : undefined
+        <List.Dropdown tooltip="Filter Sites" value={filter} onChange={setFilter}>
+          <List.Dropdown.Item title="All Sites" value="" />
+          <List.Dropdown.Section title="Status">
+            <List.Dropdown.Item
+              title={
+                attentionCount
+                  ? `Needs Attention (${attentionCount})`
+                  : "Needs Attention"
+              }
+              value="attention"
+            />
+            <List.Dropdown.Item title="Vulnerable" value="vulnerable" />
+            <List.Dropdown.Item title="SSL Expiring" value="ssl" />
+            <List.Dropdown.Item title="Updates Available" value="updates" />
+            <List.Dropdown.Item title="Disconnected" value="disconnected" />
+            <List.Dropdown.Item title="Paused" value="paused" />
+          </List.Dropdown.Section>
+          {platforms.length > 0 ? (
+            <List.Dropdown.Section title="Platform">
+              {platforms.map((platform) => (
+                <List.Dropdown.Item
+                  key={platform}
+                  title={platform}
+                  value={`platform:${platform}`}
+                />
+              ))}
+            </List.Dropdown.Section>
+          ) : null}
+          {tags && tags.length > 0 ? (
+            <List.Dropdown.Section title="Tags">
+              {tags.map((tag) => (
+                <List.Dropdown.Item
+                  key={tag.slug}
+                  title={tag.name}
+                  value={`tag:${tag.slug}`}
+                />
+              ))}
+            </List.Dropdown.Section>
+          ) : null}
+        </List.Dropdown>
       }
     >
       <List.EmptyView
@@ -775,7 +911,7 @@ function SearchSitesCommand() {
           error ? errorMessage(error) : "No sites found for this account"
         }
       />
-      {filteredSites?.map((site) => (
+      {visibleSites?.map((site) => (
         <List.Item
           key={site.hashId}
           icon={{
@@ -785,13 +921,20 @@ function SearchSitesCommand() {
           }}
           title={site.name}
           subtitle={site.url}
-          keywords={[
-            site.platform,
-            ...site.tags.flatMap((tag) => [tag.name, tag.slug]),
-          ].filter((keyword): keyword is string => Boolean(keyword))}
+          keywords={siteKeywords(site)}
           accessories={siteAccessories(site)}
           actions={
-            <SiteActions site={site} token={token} onRefresh={() => { invalidateCache(); revalidate(); }} />
+            <SiteActions
+              site={site}
+              token={token}
+              onRefresh={() => {
+                invalidateCache();
+                revalidate();
+              }}
+              sort={sort}
+              onSortChange={setSort}
+              summaryText={summaryText}
+            />
           }
         />
       ))}
