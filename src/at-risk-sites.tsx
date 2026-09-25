@@ -20,7 +20,13 @@ import {
 } from "./api/client";
 import { errorMessage } from "./api/errors";
 import { SiteSummary } from "./api/types";
-import { siteAccessories, siteKeywords, sortSites } from "./site-health";
+import {
+  enabledConcerns,
+  needsAttention,
+  siteAccessories,
+  siteKeywords,
+  sortSites,
+} from "./site-health";
 import { runOperation, SiteOperation } from "./site-operation";
 
 function faviconUrl(siteUrl: string): string {
@@ -98,10 +104,11 @@ function AtRiskSitesCommand() {
     { failureToastOptions: { title: "Failed to Fetch Sites" } },
   );
 
+  const concerns = enabledConcerns();
   const sites = data
     ? sortSites(
-        data.sites.filter((site) => site.needsAttention),
-        "attention",
+        data.sites.filter((site) => needsAttention(site, concerns)),
+        "name",
       )
     : undefined;
 

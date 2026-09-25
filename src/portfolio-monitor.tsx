@@ -8,7 +8,12 @@ import {
 import { useCachedPromise } from "@raycast/utils";
 import { authorize } from "./api/auth";
 import { getSitesSummary } from "./api/client";
-import { describePortfolio, formatAttentionReasons, sortSites } from "./site-health";
+import {
+  enabledConcerns,
+  needsAttention,
+  siteConcerns,
+  sortSites,
+} from "./site-health";
 import { siteManagementUrl } from "./site-urls";
 
 const DASHBOARD_URL = "https://manage.mysites.guru";
@@ -19,13 +24,17 @@ export default function PortfolioMonitorCommand() {
     return getSitesSummary(token);
   });
 
+  const concerns = enabledConcerns();
   const attentionSites = data
     ? sortSites(
-        data.sites.filter((site) => site.needsAttention),
-        "attention",
+        data.sites.filter((site) => needsAttention(site, concerns)),
+        "name",
       )
     : [];
-  const count = data?.meta.counts.needsAttention ?? attentionSites.length;
+  const total = data?.sites.length ?? 0;
+  const count = attentionSites.length;
+  const headline =
+    count > 0 ? `${count} of ${total} sites need attention` : "All sites healthy";
 
   return (
     <MenuBarExtra
@@ -36,7 +45,7 @@ export default function PortfolioMonitorCommand() {
           : { source: Icon.CheckCircle, tintColor: Color.Green }
       }
       title={count > 0 ? String(count) : undefined}
-      tooltip={data ? describePortfolio(data.meta) : "mySites.guru"}
+      tooltip={data ? headline : "mySites.guru"}
     >
       {error ? (
         <MenuBarExtra.Item
@@ -46,9 +55,7 @@ export default function PortfolioMonitorCommand() {
         />
       ) : null}
 
-      {data ? (
-        <MenuBarExtra.Item title={describePortfolio(data.meta)} />
-      ) : null}
+      {data ? <MenuBarExtra.Item title={headline} /> : null}
 
       {attentionSites.length > 0 ? (
         <MenuBarExtra.Section title="Needs Attention">
@@ -56,11 +63,7 @@ export default function PortfolioMonitorCommand() {
             <MenuBarExtra.Item
               key={site.hashId}
               title={site.name}
-              subtitle={
-                site.attentionReasons.length > 0
-                  ? formatAttentionReasons(site.attentionReasons)
-                  : undefined
-              }
+              subtitle={siteConcerns(site, concerns).join(", ") || undefined}
               onAction={() => open(siteManagementUrl(site))}
             />
           ))}
@@ -74,6 +77,11 @@ export default function PortfolioMonitorCommand() {
           title="Open mySites.guru"
           icon={Icon.Globe}
           onAction={() => open(DASHBOARD_URL)}
+        />
+        <MenuBarExtra.Item
+          title="Configure Signals…"
+          icon={Icon.Gear}
+          onAction={openExtensionPreferences}
         />
       </MenuBarExtra.Section>
     </MenuBarExtra>

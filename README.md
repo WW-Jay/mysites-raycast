@@ -51,8 +51,10 @@ The extension uses OAuth2 Authorization Code with PKCE and does not require a cl
 - See update, vulnerability, SSL expiry, compromise, and needs-attention badges at a glance
 - View platform, version, connection, SSL, and update information
 - Review account-wide portfolio health from the account view
+- Monitor at-risk sites from the menu bar with background refresh
+- Choose which signals count as needing attention (hide routine plugin updates, keep security alerts)
 - Review audit, backup, snapshot, and extension history
-- Queue audits, backups, snapshots, and extension updates
+- Queue audits, backups, snapshots, and extension updates individually or in bulk
 - Configurable Enter and Command-Enter site actions
 - Copy site and management URLs to the clipboard
 - Real favicons for each site

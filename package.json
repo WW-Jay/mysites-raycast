@@ -169,6 +169,78 @@
       "type": "checkbox",
       "required": false,
       "default": false
+    },
+    {
+      "name": "concernCompromise",
+      "title": "Attention Signals",
+      "label": "Potential compromise",
+      "description": "Flag sites in the menu bar and At-Risk command when a compromise or malicious cron job is detected",
+      "type": "checkbox",
+      "required": false,
+      "default": true
+    },
+    {
+      "name": "concernVulnerabilities",
+      "title": "",
+      "label": "Vulnerabilities",
+      "description": "Flag sites with vulnerable extensions or core vulnerabilities",
+      "type": "checkbox",
+      "required": false,
+      "default": true
+    },
+    {
+      "name": "concernSsl",
+      "title": "",
+      "label": "SSL expiring or expired",
+      "description": "Flag sites whose SSL certificate is expiring soon or has expired",
+      "type": "checkbox",
+      "required": false,
+      "default": true
+    },
+    {
+      "name": "concernDisconnected",
+      "title": "",
+      "label": "Disconnected",
+      "description": "Flag sites that are not currently connected",
+      "type": "checkbox",
+      "required": false,
+      "default": true
+    },
+    {
+      "name": "concernCoreUpdates",
+      "title": "",
+      "label": "Core version updates",
+      "description": "Flag sites with a CMS core update available",
+      "type": "checkbox",
+      "required": false,
+      "default": true
+    },
+    {
+      "name": "concernUpdates",
+      "title": "",
+      "label": "Any available updates",
+      "description": "Flag sites with any available updates. Turn this off (while leaving core updates on) to hide routine plugin-update noise",
+      "type": "checkbox",
+      "required": false,
+      "default": true
+    },
+    {
+      "name": "concernConfig",
+      "title": "",
+      "label": "Risky configuration",
+      "description": "Flag sites with debug mode, offline mode, open registration, disabled caching, or admins without 2FA",
+      "type": "checkbox",
+      "required": false,
+      "default": true
+    },
+    {
+      "name": "concernPaused",
+      "title": "",
+      "label": "Paused sites",
+      "description": "Flag sites that are paused",
+      "type": "checkbox",
+      "required": false,
+      "default": false
     }
   ],
   "dependencies": {
