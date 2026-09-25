@@ -10,6 +10,14 @@
 - Match sites when searching for status keywords such as "vulnerable" or "ssl"
 - Copy an account-wide portfolio summary to the clipboard
 - Surface account-wide portfolio health counts in the account view
+- Add an At-Risk Sites command with per-site and bulk audit, backup, and snapshot queueing
+- Add a Copy Portfolio Summary command
+- Add a Portfolio Monitor menu-bar command with a needs-attention count and background refresh
+- Add preferences to choose which signals count as needing attention, so routine plugin updates can be hidden while security and connectivity issues still surface
+- Highlight newly detected issues in the menu bar with a red badge, a "New Since Last Check" section, and a mark-as-seen action
+- Add an optional macOS notification when a site newly needs attention
+- Show health badges when picking a site in the audit, backup, and snapshot commands
+- Fix the Show Extensions action using a non-existent icon
 - Replace the legacy static token with OAuth2 PKCE authentication
 - Use the mySites.guru Agency API for site data
 - Add site details, audits, backups, snapshots, and extensions

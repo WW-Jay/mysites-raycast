@@ -1,4 +1,4 @@
-import { Color, Icon, List } from "@raycast/api";
+import { Color, getPreferenceValues, Icon, List } from "@raycast/api";
 import { SitesSummaryMeta, SiteSummary } from "./api/types";
 
 // SSL certificates within this many days of expiry get a badge in the list.
@@ -94,6 +94,163 @@ export function describePortfolio(meta: SitesSummaryMeta): string {
   return parts.length > 0
     ? `${total} ${noun}: ${parts.join(", ")}.`
     : `${total} ${noun}, all healthy.`;
+}
+
+// Attention "concerns" are the individual signals that can flag a site. Users
+// choose which ones the menu bar and At-Risk command act on, so a monthly
+// update cycle (where every site has updates) doesn't drown out real issues.
+export type ConcernKey =
+  | "compromise"
+  | "vulnerabilities"
+  | "ssl"
+  | "disconnected"
+  | "coreUpdates"
+  | "updates"
+  | "config"
+  | "paused";
+
+interface Concern {
+  key: ConcernKey;
+  label: string;
+  matches: (site: SiteSummary) => boolean;
+}
+
+function hasRiskyConfig(site: SiteSummary): boolean {
+  const snapshot = site.snapshot;
+  if (!snapshot) return false;
+  return (
+    snapshot.debugEnabled === true ||
+    snapshot.offlineMode === true ||
+    snapshot.userRegistrationEnabled === true ||
+    snapshot.cacheEnabled === false ||
+    (snapshot.non2faAdmins ?? 0) > 0
+  );
+}
+
+const CONCERNS: Concern[] = [
+  {
+    key: "compromise",
+    label: "Potential compromise",
+    matches: (site) =>
+      site.isHacked === true || (site.snapshot?.maliciousCronJobs ?? 0) > 0,
+  },
+  {
+    key: "vulnerabilities",
+    label: "Vulnerabilities",
+    matches: (site) => vulnerabilityCount(site) > 0,
+  },
+  {
+    key: "ssl",
+    label: "SSL expiring",
+    matches: (site) =>
+      site.sslDaysRemaining !== undefined &&
+      site.sslDaysRemaining <= SSL_WARN_DAYS,
+  },
+  {
+    key: "disconnected",
+    label: "Disconnected",
+    matches: (site) => !site.isConnected,
+  },
+  {
+    key: "coreUpdates",
+    label: "Core update",
+    matches: (site) => site.coreUpdateAvailable === true,
+  },
+  {
+    key: "updates",
+    label: "Updates available",
+    matches: (site) => (site.updatesAvailable ?? 0) > 0,
+  },
+  {
+    key: "config",
+    label: "Risky configuration",
+    matches: hasRiskyConfig,
+  },
+  {
+    key: "paused",
+    label: "Paused",
+    matches: (site) => site.isPaused === true,
+  },
+];
+
+interface ConcernPreferences {
+  concernCompromise?: boolean;
+  concernVulnerabilities?: boolean;
+  concernSsl?: boolean;
+  concernDisconnected?: boolean;
+  concernCoreUpdates?: boolean;
+  concernUpdates?: boolean;
+  concernConfig?: boolean;
+  concernPaused?: boolean;
+}
+
+const CONCERN_PREFERENCE: Record<ConcernKey, keyof ConcernPreferences> = {
+  compromise: "concernCompromise",
+  vulnerabilities: "concernVulnerabilities",
+  ssl: "concernSsl",
+  disconnected: "concernDisconnected",
+  coreUpdates: "concernCoreUpdates",
+  updates: "concernUpdates",
+  config: "concernConfig",
+  paused: "concernPaused",
+};
+
+// Defaults mirror the manifest so the helpers behave sensibly even if a
+// preference is somehow unset. Paused is off; everything else is on.
+const CONCERN_DEFAULTS: Record<ConcernKey, boolean> = {
+  compromise: true,
+  vulnerabilities: true,
+  ssl: true,
+  disconnected: true,
+  coreUpdates: true,
+  updates: true,
+  config: true,
+  paused: false,
+};
+
+export function enabledConcerns(): Set<ConcernKey> {
+  const preferences = getPreferenceValues<ConcernPreferences>();
+  const enabled = new Set<ConcernKey>();
+  for (const concern of CONCERNS) {
+    const value = preferences[CONCERN_PREFERENCE[concern.key]];
+    if (value ?? CONCERN_DEFAULTS[concern.key]) enabled.add(concern.key);
+  }
+  return enabled;
+}
+
+const CONCERN_LABELS = Object.fromEntries(
+  CONCERNS.map((concern) => [concern.key, concern.label]),
+) as Record<ConcernKey, string>;
+
+export function concernLabel(key: ConcernKey): string {
+  return CONCERN_LABELS[key] ?? key;
+}
+
+// The stable keys of the enabled concerns a site currently trips.
+export function siteConcernKeys(
+  site: SiteSummary,
+  enabled: Set<ConcernKey>,
+): ConcernKey[] {
+  return CONCERNS.filter(
+    (concern) => enabled.has(concern.key) && concern.matches(site),
+  ).map((concern) => concern.key);
+}
+
+// The labels of the enabled concerns a site currently trips.
+export function siteConcerns(
+  site: SiteSummary,
+  enabled: Set<ConcernKey>,
+): string[] {
+  return siteConcernKeys(site, enabled).map(concernLabel);
+}
+
+export function needsAttention(
+  site: SiteSummary,
+  enabled: Set<ConcernKey>,
+): boolean {
+  return CONCERNS.some(
+    (concern) => enabled.has(concern.key) && concern.matches(site),
+  );
 }
 
 export type SiteSort =

@@ -17,7 +17,23 @@ type ExtensionPreferences = {
   /** Detail: CMD+Enter Action - Action when pressing Command+Enter in the site detail view */
   "secondarySiteAction": "manage" | "site" | "admin",
   /** Confirm Actions - Show a confirmation prompt before queuing audits, backups, or snapshots */
-  "confirmSiteActions": boolean
+  "confirmSiteActions": boolean,
+  /** Attention Signals - Flag sites in the menu bar and At-Risk command when a compromise or malicious cron job is detected */
+  "concernCompromise": boolean,
+  /**  - Flag sites with vulnerable extensions or core vulnerabilities */
+  "concernVulnerabilities": boolean,
+  /**  - Flag sites whose SSL certificate is expiring soon or has expired */
+  "concernSsl": boolean,
+  /**  - Flag sites that are not currently connected */
+  "concernDisconnected": boolean,
+  /**  - Flag sites with a CMS core update available */
+  "concernCoreUpdates": boolean,
+  /**  - Flag sites with any available updates. Turn this off (while leaving core updates on) to hide routine plugin-update noise */
+  "concernUpdates": boolean,
+  /**  - Flag sites with debug mode, offline mode, open registration, disabled caching, or admins without 2FA */
+  "concernConfig": boolean,
+  /**  - Flag sites that are paused */
+  "concernPaused": boolean
 }
 
 /** Preferences accessible in all the extension's commands */
@@ -32,6 +48,15 @@ declare namespace Preferences {
   export type CreateBackup = ExtensionPreferences & {}
   /** Preferences accessible in the `take-snapshot` command */
   export type TakeSnapshot = ExtensionPreferences & {}
+  /** Preferences accessible in the `at-risk-sites` command */
+  export type AtRiskSites = ExtensionPreferences & {}
+  /** Preferences accessible in the `portfolio-summary` command */
+  export type PortfolioSummary = ExtensionPreferences & {}
+  /** Preferences accessible in the `portfolio-monitor` command */
+  export type PortfolioMonitor = ExtensionPreferences & {
+  /** Notifications - Sends a macOS notification (via osascript) for newly detected issues. The menu bar always highlights new issues regardless of this setting. */
+  "notifyNewIssues": boolean
+}
   /** Preferences accessible in the `sign-out` command */
   export type SignOut = ExtensionPreferences & {}
 }
@@ -45,6 +70,12 @@ declare namespace Arguments {
   export type CreateBackup = {}
   /** Arguments passed to the `take-snapshot` command */
   export type TakeSnapshot = {}
+  /** Arguments passed to the `at-risk-sites` command */
+  export type AtRiskSites = {}
+  /** Arguments passed to the `portfolio-summary` command */
+  export type PortfolioSummary = {}
+  /** Arguments passed to the `portfolio-monitor` command */
+  export type PortfolioMonitor = {}
   /** Arguments passed to the `sign-out` command */
   export type SignOut = {}
 }
