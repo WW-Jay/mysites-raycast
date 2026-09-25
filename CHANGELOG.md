@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+- Load the site list from the mySites.guru site summary endpoint in a single request
+- Show update, vulnerability, SSL expiry, compromise, and needs-attention badges in the site list
+- Add a "Needs Attention" filter alongside tag filtering
+- Surface account-wide portfolio health counts in the account view
 - Replace the legacy static token with OAuth2 PKCE authentication
 - Use the mySites.guru Agency API for site data
 - Add site details, audits, backups, snapshots, and extensions

@@ -19,11 +19,11 @@ import {
   getAudit,
   getProfile,
   getSite,
+  getSitesSummary,
   invalidateCache,
   listAudits,
   listBackups,
   listExtensions,
-  listSites,
   listSnapshots,
   listTags,
   triggerAudit,
@@ -32,7 +32,7 @@ import {
   updateExtensions,
 } from "./api/client";
 import { errorMessage } from "./api/errors";
-import { Extension, Site } from "./api/types";
+import { Extension, Site, SiteSummary } from "./api/types";
 import {
   DEFAULT_LIST_SITE_ACTION,
   DEFAULT_PRIMARY_SITE_ACTION,
@@ -69,6 +69,65 @@ function yesNo(value?: boolean): string | undefined {
   return value === undefined ? undefined : value ? "Yes" : "No";
 }
 
+const ATTENTION_REASON_LABELS: Record<string, string> = {
+  updates_available: "Updates available",
+  core_update_available: "Core update available",
+  vulnerable_extensions: "Vulnerable extensions",
+  core_vulnerability: "Core vulnerability",
+  core_vulnerabilities: "Core vulnerabilities",
+  hacked: "Potential compromise",
+  is_hacked: "Potential compromise",
+  disconnected: "Disconnected",
+  not_connected: "Disconnected",
+  stale_snapshot: "Stale snapshot",
+  paused: "Paused",
+  is_paused: "Paused",
+  debug_enabled: "Debug mode enabled",
+  cache_disabled: "Caching disabled",
+  caching_disabled: "Caching disabled",
+  user_registration_enabled: "User registration open",
+  offline_mode: "Offline mode",
+  non_2fa_admins: "Admins without 2FA",
+  malicious_cron_jobs: "Malicious cron jobs",
+  ssl_expiring: "SSL expiring soon",
+  ssl_expiring_soon: "SSL expiring soon",
+  ssl_expired: "SSL certificate expired",
+  no_backup: "No backup",
+  backup_overdue: "Backup overdue",
+};
+
+const REASON_ACRONYMS: Record<string, string> = {
+  ssl: "SSL",
+  php: "PHP",
+  cms: "CMS",
+  "2fa": "2FA",
+  url: "URL",
+  api: "API",
+};
+
+function humanizeSlug(slug: string): string {
+  return slug
+    .split(/[_\s-]+/)
+    .filter(Boolean)
+    .map(
+      (word) =>
+        REASON_ACRONYMS[word.toLowerCase()] ??
+        word.charAt(0).toUpperCase() + word.slice(1),
+    )
+    .join(" ");
+}
+
+// The API returns attention reasons as raw slugs (e.g. "core_update_available").
+// Map the ones we know to friendly labels, and title-case anything unmapped so
+// new reasons stay readable without a code change.
+function formatAttentionReason(reason: string): string {
+  return ATTENTION_REASON_LABELS[reason.toLowerCase()] ?? humanizeSlug(reason);
+}
+
+function formatAttentionReasons(reasons: string[]): string {
+  return reasons.map(formatAttentionReason).join(", ");
+}
+
 function markdownValue(value: string | number | undefined): string {
   if (value === undefined || value === "") return "";
   return String(value).replaceAll("|", "\\|").replaceAll("\n", " ");
@@ -90,7 +149,7 @@ function markdownTable(
   ].join("\n");
 }
 
-function siteAccessories(site: Site): List.Item.Accessory[] {
+function siteAccessories(site: SiteSummary): List.Item.Accessory[] {
   const accessories: List.Item.Accessory[] = [];
 
   if (site.platform) {
@@ -99,9 +158,66 @@ function siteAccessories(site: Site): List.Item.Accessory[] {
     });
   }
 
+  if (site.updatesAvailable && site.updatesAvailable > 0) {
+    accessories.push({
+      icon: {
+        source: Icon.Download,
+        tintColor: site.coreUpdateAvailable ? Color.Orange : Color.Blue,
+      },
+      text: String(site.updatesAvailable),
+      tooltip: site.coreUpdateAvailable
+        ? `${site.updatesAvailable} updates available (includes core)`
+        : `${site.updatesAvailable} updates available`,
+    });
+  }
+
+  const vulnerabilities =
+    (site.vulnerableExtensions ?? 0) + (site.coreVulnerabilityCount ?? 0);
+  if (vulnerabilities > 0) {
+    accessories.push({
+      icon: { source: Icon.Bug, tintColor: Color.Red },
+      text: String(vulnerabilities),
+      tooltip: `${vulnerabilities} known ${
+        vulnerabilities === 1 ? "vulnerability" : "vulnerabilities"
+      }`,
+    });
+  }
+
+  if (site.sslDaysRemaining !== undefined && site.sslDaysRemaining <= 14) {
+    accessories.push({
+      icon: {
+        source: Icon.Lock,
+        tintColor: site.sslDaysRemaining <= 0 ? Color.Red : Color.Orange,
+      },
+      tooltip:
+        site.sslDaysRemaining <= 0
+          ? "SSL certificate expired"
+          : `SSL expires in ${site.sslDaysRemaining} day${
+              site.sslDaysRemaining === 1 ? "" : "s"
+            }`,
+    });
+  }
+
+  if (site.isHacked) {
+    accessories.push({
+      icon: { source: Icon.Warning, tintColor: Color.Red },
+      tooltip: "Potential compromise detected",
+    });
+  }
+
+  if (site.needsAttention) {
+    accessories.push({
+      icon: { source: Icon.ExclamationMark, tintColor: Color.Orange },
+      tooltip:
+        site.attentionReasons.length > 0
+          ? formatAttentionReasons(site.attentionReasons)
+          : "Needs attention",
+    });
+  }
+
   accessories.push({
     icon: {
-      source: site.isConnected ? Icon.CheckCircle : Icon.ExclamationMark,
+      source: site.isConnected ? Icon.CheckCircle : Icon.XMarkCircle,
       tintColor: site.isConnected ? Color.Green : Color.Red,
     },
     tooltip: site.isConnected ? "Connected" : "Disconnected",
@@ -341,11 +457,16 @@ function SiteDetailView({ site, token }: { site: Site; token: string }) {
     },
   );
   const detail = data ?? site;
+  const summary: SiteSummary | undefined =
+    "attentionReasons" in site ? (site as SiteSummary) : undefined;
   const tags = detail.tags.map((tag) => tag.name).join(", ") || undefined;
   const status = detail.isConnected ? "Connected" : "Disconnected";
   const markdown = [
     `# ${detail.name}`,
     `\`${detail.url}\``,
+    summary?.needsAttention && summary.attentionReasons.length > 0
+      ? `> ⚠️ **Needs attention:** ${formatAttentionReasons(summary.attentionReasons)}`
+      : "",
     "## Site",
     markdownTable([
       ["Connection", status],
@@ -384,9 +505,40 @@ function SiteDetailView({ site, token }: { site: Site; token: string }) {
         "SSL Expiration",
         "sslExpiration" in detail
           ? formatDate(detail.sslExpiration)
+          : formatDate(summary?.sslExpiration),
+      ],
+      [
+        "SSL Days Remaining",
+        summary?.sslDaysRemaining !== undefined
+          ? summary.sslDaysRemaining
           : undefined,
       ],
       ["SSL Issuer", "sslIssuer" in detail ? detail.sslIssuer : undefined],
+      [
+        "Vulnerable Extensions",
+        summary?.vulnerableExtensions !== undefined
+          ? summary.vulnerableExtensions
+          : undefined,
+      ],
+      [
+        "Core Vulnerabilities",
+        summary?.coreVulnerabilityCount !== undefined
+          ? summary.coreVulnerabilityCount
+          : undefined,
+      ],
+      ["Compromise Detected", summary?.isHacked ? "Yes" : undefined],
+      [
+        "Admins Without 2FA",
+        summary?.snapshot?.non2faAdmins !== undefined
+          ? summary.snapshot.non2faAdmins
+          : undefined,
+      ],
+      [
+        "Malicious Cron Jobs",
+        summary?.snapshot?.maliciousCronJobs !== undefined
+          ? summary.snapshot.maliciousCronJobs
+          : undefined,
+      ],
     ]),
     error ? `> ${errorMessage(error)}` : "",
   ]
@@ -413,34 +565,61 @@ function AccountView({ token }: { token: string }) {
       failureToastOptions: { title: "Failed to Fetch Account" },
     },
   );
+  const { data: summary, revalidate: revalidateSummary } = useCachedPromise(
+    getSitesSummary,
+    [token],
+  );
+
+  const counts = summary?.meta.counts;
+  const markdown = data
+    ? [
+        `# ${data.company ?? data.name ?? "MySites.guru"}`,
+        markdownTable([
+          ["Name", data.name],
+          ["Company", data.company],
+          ["Email", data.email],
+          ["User ID", data.uuid],
+        ]),
+        summary?.meta.summary ? `> ${summary.meta.summary}` : "",
+        counts
+          ? "## Portfolio"
+          : "",
+        counts
+          ? markdownTable([
+              ["Total Sites", summary?.meta.total],
+              ["Needs Attention", counts.needsAttention],
+              ["Disconnected", counts.disconnected],
+              ["Updates Available", counts.updatesAvailable],
+              ["Core Updates", counts.coreUpdateAvailable],
+              ["Vulnerable Extensions", counts.vulnerableExtensions],
+              ["Core Vulnerabilities", counts.coreVulnerabilities],
+              ["Hacked", counts.hacked],
+              ["Stale Snapshots", counts.staleSnapshot],
+              ["Paused", counts.paused],
+            ])
+          : "",
+        error ? `> ${errorMessage(error)}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n\n")
+    : undefined;
 
   return (
     <Detail
       isLoading={isLoading}
       navigationTitle="MySites.guru Account"
-      markdown={
-        data
-          ? [
-              `# ${data.company ?? data.name ?? "MySites.guru"}`,
-              markdownTable([
-                ["Name", data.name],
-                ["Company", data.company],
-                ["Email", data.email],
-                ["User ID", data.uuid],
-              ]),
-              error ? `> ${errorMessage(error)}` : "",
-            ]
-              .filter(Boolean)
-              .join("\n\n")
-          : undefined
-      }
+      markdown={markdown}
       actions={
         <ActionPanel>
           <Action
             title="Refresh"
             icon={Icon.ArrowClockwise}
             shortcut={{ modifiers: ["cmd"], key: "r" }}
-            onAction={() => { invalidateCache(); revalidate(); }}
+            onAction={() => {
+              invalidateCache();
+              revalidate();
+              revalidateSummary();
+            }}
           />
         </ActionPanel>
       }
@@ -734,38 +913,62 @@ function ExtensionsView({ site, token }: { site: Site; token: string }) {
   );
 }
 
+function matchesFilter(site: SiteSummary, filter: string): boolean {
+  if (filter === "") return true;
+  if (filter === "attention") return site.needsAttention === true;
+  if (filter.startsWith("tag:")) {
+    const slug = filter.slice(4);
+    return site.tags.some((tag) => tag.slug === slug);
+  }
+  return true;
+}
+
 function SearchSitesCommand() {
   const token = useAccessToken();
-  const [selectedTag, setSelectedTag] = useState<string>("");
+  const [filter, setFilter] = useState<string>("");
 
   const {
-    data: sites,
+    data: summary,
     isLoading,
     error,
     revalidate,
-  } = useCachedPromise(listSites, [token], {
+  } = useCachedPromise(getSitesSummary, [token], {
     failureToastOptions: { title: "Failed to Fetch Sites" },
   });
 
   const { data: tags } = useCachedPromise(listTags, [token]);
 
-  const filteredSites = selectedTag
-    ? sites?.filter((site) => site.tags.some((t) => t.slug === selectedTag))
-    : sites;
+  const sites = summary?.sites;
+  const attentionCount = summary?.meta.counts.needsAttention;
+  const filteredSites = sites?.filter((site) => matchesFilter(site, filter));
 
   return (
     <List
       isLoading={isLoading}
       searchBarPlaceholder="Search your mySites.guru sites..."
       searchBarAccessory={
-        tags && tags.length > 0 ? (
-          <List.Dropdown tooltip="Filter by Tag" onChange={setSelectedTag}>
-            <List.Dropdown.Item title="All Sites" value="" />
-            {tags.map((tag) => (
-              <List.Dropdown.Item key={tag.slug} title={tag.name} value={tag.slug} />
-            ))}
-          </List.Dropdown>
-        ) : undefined
+        <List.Dropdown tooltip="Filter Sites" onChange={setFilter}>
+          <List.Dropdown.Item title="All Sites" value="" />
+          <List.Dropdown.Item
+            title={
+              attentionCount
+                ? `Needs Attention (${attentionCount})`
+                : "Needs Attention"
+            }
+            value="attention"
+          />
+          {tags && tags.length > 0 ? (
+            <List.Dropdown.Section title="Tags">
+              {tags.map((tag) => (
+                <List.Dropdown.Item
+                  key={tag.slug}
+                  title={tag.name}
+                  value={`tag:${tag.slug}`}
+                />
+              ))}
+            </List.Dropdown.Section>
+          ) : null}
+        </List.Dropdown>
       }
     >
       <List.EmptyView

@@ -47,8 +47,10 @@ The extension uses OAuth2 Authorization Code with PKCE and does not require a cl
 ## Features
 
 - Search all your connected sites by name
-- Filter sites by tag
+- Filter sites by tag or by whether they need attention
+- See update, vulnerability, SSL expiry, compromise, and needs-attention badges at a glance
 - View platform, version, connection, SSL, and update information
+- Review account-wide portfolio health from the account view
 - Review audit, backup, snapshot, and extension history
 - Queue audits, backups, snapshots, and extension updates
 - Configurable Enter and Command-Enter site actions

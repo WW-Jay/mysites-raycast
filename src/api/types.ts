@@ -37,6 +37,79 @@ export interface SiteDetail extends Site {
   coreUpdateAvailable?: boolean;
 }
 
+export interface SiteSnapshotFlags {
+  id?: string;
+  debugEnabled?: boolean;
+  cacheEnabled?: boolean;
+  userRegistrationEnabled?: boolean;
+  offlineMode?: boolean;
+  superAdminCount?: number;
+  non2faAdmins?: number;
+  maliciousCronJobs?: number;
+}
+
+export interface SiteSummary extends Site {
+  connectorVersion?: string;
+  isPaused?: boolean;
+  isHacked?: boolean;
+  lastSnapshot?: string;
+  snapshotAgeDays?: number;
+  lastAuditId?: string;
+  auditUnread?: boolean;
+  lastBackupStarted?: string;
+  lastBackupCompleted?: string;
+  updatesAvailable?: number;
+  coreUpdateAvailable?: boolean;
+  vulnerableExtensions?: number;
+  coreVulnerabilityCount?: number;
+  sslExpiration?: string;
+  sslDaysRemaining?: number;
+  needsAttention?: boolean;
+  attentionReasons: string[];
+  snapshot?: SiteSnapshotFlags;
+}
+
+export interface SitesSummaryCounts {
+  hacked?: number;
+  updatesAvailable?: number;
+  coreUpdateAvailable?: number;
+  vulnerableExtensions?: number;
+  coreVulnerabilities?: number;
+  disconnected?: number;
+  staleSnapshot?: number;
+  paused?: number;
+  needsAttention?: number;
+}
+
+export interface SitesSummaryMeta {
+  total?: number;
+  scopeTotal?: number;
+  generatedAt?: string;
+  staleSnapshotDays?: number;
+  counts: SitesSummaryCounts;
+  summary?: string;
+}
+
+export interface SitesSummary {
+  sites: SiteSummary[];
+  meta: SitesSummaryMeta;
+}
+
+export type SitesSummarySort =
+  | "name"
+  | "last_snapshot"
+  | "last_backup_completed"
+  | "updates";
+
+export interface SitesSummaryOptions {
+  needsAttention?: boolean;
+  platform?: string;
+  tag?: string;
+  hashIds?: string[];
+  includePaused?: boolean;
+  sort?: SitesSummarySort;
+}
+
 export interface PaginationMeta {
   currentPage: number;
   perPage: number;
