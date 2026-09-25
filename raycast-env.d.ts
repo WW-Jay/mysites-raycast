@@ -32,6 +32,12 @@ declare namespace Preferences {
   export type CreateBackup = ExtensionPreferences & {}
   /** Preferences accessible in the `take-snapshot` command */
   export type TakeSnapshot = ExtensionPreferences & {}
+  /** Preferences accessible in the `at-risk-sites` command */
+  export type AtRiskSites = ExtensionPreferences & {}
+  /** Preferences accessible in the `portfolio-summary` command */
+  export type PortfolioSummary = ExtensionPreferences & {}
+  /** Preferences accessible in the `portfolio-monitor` command */
+  export type PortfolioMonitor = ExtensionPreferences & {}
   /** Preferences accessible in the `sign-out` command */
   export type SignOut = ExtensionPreferences & {}
 }
@@ -45,6 +51,12 @@ declare namespace Arguments {
   export type CreateBackup = {}
   /** Arguments passed to the `take-snapshot` command */
   export type TakeSnapshot = {}
+  /** Arguments passed to the `at-risk-sites` command */
+  export type AtRiskSites = {}
+  /** Arguments passed to the `portfolio-summary` command */
+  export type PortfolioSummary = {}
+  /** Arguments passed to the `portfolio-monitor` command */
+  export type PortfolioMonitor = {}
   /** Arguments passed to the `sign-out` command */
   export type SignOut = {}
 }
