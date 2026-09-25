@@ -64,6 +64,9 @@ The extension uses OAuth2 Authorization Code with PKCE and does not require a cl
 | Command | Description |
 |---------|-------------|
 | Site Search | Search, inspect, and manage your sites |
+| At-Risk Sites | Review sites needing attention and queue bulk actions |
+| Copy Portfolio Summary | Copy an account-wide health summary to the clipboard |
+| Portfolio Monitor | Show sites needing attention in the menu bar |
 | Run Site Audit | Find a site and queue a security audit |
 | Create Site Backup | Find a site and queue a backup |
 | Take Site Snapshot | Find a site and queue a file snapshot |

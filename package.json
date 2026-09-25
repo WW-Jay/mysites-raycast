@@ -57,6 +57,28 @@
       ]
     },
     {
+      "name": "at-risk-sites",
+      "title": "At-Risk Sites",
+      "description": "Review sites that need attention and queue bulk actions",
+      "mode": "view",
+      "keywords": ["mysites", "attention", "issues", "bulk"]
+    },
+    {
+      "name": "portfolio-summary",
+      "title": "Copy Portfolio Summary",
+      "description": "Copy an account-wide health summary to the clipboard",
+      "mode": "no-view",
+      "keywords": ["mysites", "summary", "report", "standup"]
+    },
+    {
+      "name": "portfolio-monitor",
+      "title": "Portfolio Monitor",
+      "description": "Show sites needing attention in the menu bar",
+      "mode": "menu-bar",
+      "interval": "1h",
+      "keywords": ["mysites", "monitor", "menubar", "attention"]
+    },
+    {
       "name": "sign-out",
       "title": "Sign Out",
       "description": "Remove the stored MySites.guru OAuth session",
