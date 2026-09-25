@@ -2,7 +2,6 @@ import {
   Action,
   ActionPanel,
   Alert,
-  Color,
   Icon,
   Image,
   List,
@@ -14,14 +13,15 @@ import {
 import { useCachedPromise } from "@raycast/utils";
 import { useAccessToken } from "./api/auth-context";
 import {
+  getSitesSummary,
   invalidateCache,
-  listSites,
   triggerAudit,
   triggerBackup,
   triggerSnapshot,
 } from "./api/client";
 import { errorMessage } from "./api/errors";
 import { Site } from "./api/types";
+import { siteAccessories, siteKeywords, sortSites } from "./site-health";
 import { SiteActionPreferences } from "./site-urls";
 
 export type SiteOperation = "audit" | "backup" | "snapshot";
@@ -67,7 +67,7 @@ function faviconUrl(siteUrl: string): string {
   }
 }
 
-async function runOperation(
+export async function runOperation(
   operation: SiteOperation,
   token: string,
   site: Site,
@@ -118,10 +118,13 @@ export function SiteOperationCommand({
   const token = useAccessToken();
   const details = operationDetails[operation];
   const { data, isLoading, error, revalidate } = useCachedPromise(
-    listSites,
+    getSitesSummary,
     [token],
     { failureToastOptions: { title: "Failed to Fetch Sites" } },
   );
+
+  // Surface the sites that need action first so the operation is easy to target.
+  const sites = data ? sortSites(data.sites, "attention") : undefined;
 
   return (
     <List
@@ -132,7 +135,7 @@ export function SiteOperationCommand({
         title={error ? "Failed to Load Sites" : "No Sites Found"}
         description={error ? errorMessage(error) : undefined}
       />
-      {data?.map((site) => (
+      {sites?.map((site) => (
         <List.Item
           key={site.hashId}
           icon={{
@@ -142,18 +145,8 @@ export function SiteOperationCommand({
           }}
           title={site.name}
           subtitle={site.url}
-          accessories={[
-            site.platform ? { text: site.platform } : {},
-            {
-              icon: {
-                source: site.isConnected
-                  ? Icon.CheckCircle
-                  : Icon.ExclamationMark,
-                tintColor: site.isConnected ? Color.Green : Color.Red,
-              },
-              tooltip: site.isConnected ? "Connected" : "Disconnected",
-            },
-          ]}
+          keywords={siteKeywords(site)}
+          accessories={siteAccessories(site)}
           actions={
             <ActionPanel>
               <Action
