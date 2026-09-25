@@ -76,7 +76,18 @@
       "description": "Show sites needing attention in the menu bar",
       "mode": "menu-bar",
       "interval": "1h",
-      "keywords": ["mysites", "monitor", "menubar", "attention"]
+      "keywords": ["mysites", "monitor", "menubar", "attention"],
+      "preferences": [
+        {
+          "name": "notifyNewIssues",
+          "title": "Notifications",
+          "label": "Show a macOS notification when a site newly needs attention",
+          "description": "Sends a macOS notification (via osascript) for newly detected issues. The menu bar always highlights new issues regardless of this setting.",
+          "type": "checkbox",
+          "required": false,
+          "default": false
+        }
+      ]
     },
     {
       "name": "sign-out",

@@ -218,14 +218,30 @@ export function enabledConcerns(): Set<ConcernKey> {
   return enabled;
 }
 
+const CONCERN_LABELS = Object.fromEntries(
+  CONCERNS.map((concern) => [concern.key, concern.label]),
+) as Record<ConcernKey, string>;
+
+export function concernLabel(key: ConcernKey): string {
+  return CONCERN_LABELS[key] ?? key;
+}
+
+// The stable keys of the enabled concerns a site currently trips.
+export function siteConcernKeys(
+  site: SiteSummary,
+  enabled: Set<ConcernKey>,
+): ConcernKey[] {
+  return CONCERNS.filter(
+    (concern) => enabled.has(concern.key) && concern.matches(site),
+  ).map((concern) => concern.key);
+}
+
 // The labels of the enabled concerns a site currently trips.
 export function siteConcerns(
   site: SiteSummary,
   enabled: Set<ConcernKey>,
 ): string[] {
-  return CONCERNS.filter(
-    (concern) => enabled.has(concern.key) && concern.matches(site),
-  ).map((concern) => concern.label);
+  return siteConcernKeys(site, enabled).map(concernLabel);
 }
 
 export function needsAttention(

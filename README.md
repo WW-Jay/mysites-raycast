@@ -52,6 +52,7 @@ The extension uses OAuth2 Authorization Code with PKCE and does not require a cl
 - View platform, version, connection, SSL, and update information
 - Review account-wide portfolio health from the account view
 - Monitor at-risk sites from the menu bar with background refresh
+- Get highlighted (and optionally notified) when a site newly needs attention
 - Choose which signals count as needing attention (hide routine plugin updates, keep security alerts)
 - Review audit, backup, snapshot, and extension history
 - Queue audits, backups, snapshots, and extension updates individually or in bulk

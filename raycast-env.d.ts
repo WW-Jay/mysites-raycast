@@ -53,7 +53,10 @@ declare namespace Preferences {
   /** Preferences accessible in the `portfolio-summary` command */
   export type PortfolioSummary = ExtensionPreferences & {}
   /** Preferences accessible in the `portfolio-monitor` command */
-  export type PortfolioMonitor = ExtensionPreferences & {}
+  export type PortfolioMonitor = ExtensionPreferences & {
+  /** Notifications - Sends a macOS notification (via osascript) for newly detected issues. The menu bar always highlights new issues regardless of this setting. */
+  "notifyNewIssues": boolean
+}
   /** Preferences accessible in the `sign-out` command */
   export type SignOut = ExtensionPreferences & {}
 }
