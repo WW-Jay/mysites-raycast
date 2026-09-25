@@ -4,7 +4,11 @@
 
 - Load the site list from the mySites.guru site summary endpoint in a single request
 - Show update, vulnerability, SSL expiry, compromise, and needs-attention badges in the site list
-- Add a "Needs Attention" filter alongside tag filtering
+- Filter the site list by status (needs attention, vulnerable, SSL expiring, updates, disconnected, paused), platform, and tag
+- Sort the site list by name, attention, SSL expiry, updates, snapshot age, or backup age
+- Translate raw attention-reason slugs into human-readable labels
+- Match sites when searching for status keywords such as "vulnerable" or "ssl"
+- Copy an account-wide portfolio summary to the clipboard
 - Surface account-wide portfolio health counts in the account view
 - Replace the legacy static token with OAuth2 PKCE authentication
 - Use the mySites.guru Agency API for site data
